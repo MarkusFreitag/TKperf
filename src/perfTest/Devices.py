@@ -556,7 +556,7 @@ class RAID(Device):
         @param config The config file describing the RAID set
         '''
         super(RAID, self).__init__(devtype, path, devname, vendor)
-        ## Type of raid, read from config, e.g. sw_mdadm, hw_lsi
+        ## Type of raid, read from config, e.g. sw_mdadm, hw_lsi, hw_adaptec
         self.__type = None
         ## The config file describing the RAID device
         self.__config = config
@@ -599,20 +599,25 @@ class RAID(Device):
             self.__type = decoded["type"]
         if self.__type == "sw_mdadm":
             self.__raidTec = Mdadm(self.getDevPath(), decoded["raidlevel"], decoded["devices"])
-        if self.__type == "hw_lsi":
+        if self.__type in ['hw_lsi', 'hw_adaptec']:
             # If no readpolicy is specified, use nora (no read ahead) as default
-            readpolicy = "nora"
+            readpolicy = 'nora' if self.__type == 'hw_lsi' else 'roff'
             # If no writepolicy is specified, use wt (write through) as default
-            writepolicy = "wt"
+            writepolicy = 'wt'
             # If no stripsize is specified, use 256 (KB) as default
-            stripsize = "strip=256"
+            stripsize = 'strip=256' if self.__type == 'hw_lsi' else '256'
             if "readpolicy" in decoded:
                 readpolicy = decoded["readpolicy"]
             if "writepolicy" in decoded:
                 writepolicy = decoded["writepolicy"]
             if "stripsize" in decoded:
                 stripsize = decoded["stripsize"]
-            self.__raidTec = Storcli(self.getDevPath(), decoded["raidlevel"], decoded["devices"], readpolicy, writepolicy, stripsize)
+            if self.__type == 'hw_lsi':
+                self.__raidTec = Storcli(self.getDevPath(), decoded["raidlevel"],
+                                         decoded["devices"], readpolicy, writepolicy, stripsize)
+            else:
+                self.__raidTec = Arcconf(self.getDevPath(), decoded["raidlevel"],
+                                         decoded["devices"], readpolicy, writepolicy, stripsize)
         self.__raidTec.initialize()
 
     def readDevInfo(self):
@@ -622,7 +627,7 @@ class RAID(Device):
         devInfo += ', '.join(self.__raidTec.getDevices()) + "\n"
         devInfo += "RAID level: "
         devInfo += str(self.__raidTec.getLevel()) + "\n"
-        if self.__type == "hw_lsi":
+        if self.__type in ["hw_lsi", "hw_arcconf"]:
             devInfo += "Controller read policy: "
             devInfo += str(self.__raidTec.getREADPOLICY()) + "\n"
             devInfo += "Controller write policy: "
@@ -664,6 +669,8 @@ class RAID(Device):
         if self.getType() == 'hw_lsi':
             logging.info("# Secure Erase not implemented on LSI controllers, skipping...")
             return
+        if self.getType() == 'hw_arcconf':
+            self.__raidtec.secure_erase()
         # After secure erase create the raid device
         logging.info("# Creating raid device "+self.getDevPath()+" after secure erase!")
         self.createRaid()
@@ -688,7 +695,7 @@ class RAID(Device):
             else:
                 logging.error("# Error: Could not precondition " + self.getDevPath())
                 raise RuntimeError, "precondition error"
-        if self.getType() == 'hw_lsi':
+        if self.getType() in ['hw_lsi', 'hw_arcconf']:
             tmpSSD = SSD('ssd', self.getDevPath(), self.getDevName())
             tmpSSD.precondition(nj, iod)
         # After preconditioning create the raid device
