@@ -508,3 +508,13 @@ class Arcconf(RAIDtec):
                 port = port.split(':')[1]
                 phy_devs.append('{}:{}'.format(channel, port))
         return phy_devs
+
+    def checkVDs(self):
+        """Get all configured virtual devices."""
+        devices = []
+        result = self._execute('GETCONFIG', ['LD'])
+        for line in result.split('\n'):
+            if line.startswith('Logical Device Number'):
+                devices.append(line.split()[3])
+        self.vdevs = devices
+        logging.info('# Got the following VDs: {}'.format(', '.join(devices)))
