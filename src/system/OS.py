@@ -423,3 +423,25 @@ class Storcli(RAIDtec):
                     else:
                         ready = False
         return ready
+
+
+class Arcconf(RAIDtec):
+    """Represents a arcconf based RAID technology."""
+
+    def __init__(self, path, level, devices, readpolicy, writepolicy, stripesize):
+        """Constructor"""
+        super(Arcconf, self).__init__(path, level, devices)
+        self.vdev = None
+        self.vdevs = None
+        self.readpolicy = readpolicy
+        self.writepolicy = writepolicy
+        self.stripesize = stripesize
+
+    # Keep these methods just to ensure backwards compatibility.
+    def getVD(self): return self.vd
+    def getVDs(self): return self.vds
+    def getREADPOLICY(self): return self.readpolicy
+    def getWRITEPOLICY(self): return self.writepolicy
+    def getSTRIPSIZE(self): return self.stripesize
+    def setVD(self, v): self.vdev = v
+    def setVDs(self, v): self.vdevs = v
