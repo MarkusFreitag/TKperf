@@ -488,3 +488,23 @@ class Arcconf(RAIDtec):
             logging.info(self.getDevices())
             result = self._execute('GETCONFIG', ['LD'])
             return bool('No logical devices configured' in result)
+
+    def getPDsFromVD(self, vdev_id):
+        """Return a list of physical devices for the given virtual device.
+
+        Args:
+            vdev_id (str): virtual device id
+        Returns:
+            list: list of physical devices, as CHANNEL:PORT info
+        """
+        phy_devs = []
+        result = self._execute('GETCONFIG', ['LD', vdev_id])
+        for part in result.split('\n\n'):
+            segments = part.split(56*'-')[-1]
+            for line in list(filter(None, segments.split('\n'))):
+                line = ':'.join(line.split(':')[1:])
+                channel, port = line.split('(')[1].split(')')[0].split(',')[3:4]
+                channel = channel.split(':')[1]
+                port = port.split(':')[1]
+                phy_devs.append('{}:{}'.format(channel, port))
+        return phy_devs
