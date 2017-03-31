@@ -445,3 +445,17 @@ class Arcconf(RAIDtec):
     def getSTRIPSIZE(self): return self.stripesize
     def setVD(self, v): self.vdev = v
     def setVDs(self, v): self.vdevs = v
+
+    def _execute(self, cmd, args):
+        proc = subprocess.Popen([self.path, cmd, '0'] + args, shell=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = proc.communicate()
+        if isinstance(out, bytes):
+            out = out.decode().strip()
+        if isinstance(err, bytes):
+            err = err.decode().strip()
+        if proc.returncode:
+            ex = RuntimeError(err)
+            ex.exitcode = proc.returncode
+            raise ex
+        return out
