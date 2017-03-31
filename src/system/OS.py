@@ -459,3 +459,14 @@ class Arcconf(RAIDtec):
             ex.exitcode = proc.returncode
             raise ex
         return out
+
+    def initialize(self):
+        """Look for the arcconf source path."""
+        result = subprocess.Popen(['which', 'arcconf'], shell=True,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, _ = result.communicate()
+        if result.returncode != 0:
+            logging.error('# Error: command 'which arcconf' returned an error code.')
+            raise RuntimeError, 'which arcconf command error'
+        else:
+            self.setUtil(stdout.rstrip('\n'))
