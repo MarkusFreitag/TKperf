@@ -518,3 +518,46 @@ class Arcconf(RAIDtec):
                 devices.append(line.split()[3])
         self.vdevs = devices
         logging.info('# Got the following VDs: {}'.format(', '.join(devices)))
+
+    def createVD(self):
+        """Create a virtual device with given options."""
+        # Fetch VDs before creating the new one
+        self.checkVDs()
+        self.checkBlockDevs()
+        virt_devs_before = self.vdevs()
+        block_devs_before = self.getBlockDevs()
+
+        phy_devs = [dev.replace(':', ' ') for dev in self.__devices]
+        args = ['LOGICALDRIVE', 'method', 'SKIP']
+        if self.readpolicy:
+            args = args + ['rcache', self.readpolicy]
+        if self.writepolicy:
+            args = args + ['wcache', self.writepolicy]
+        if self.stripesize:
+            args = args + ['stripesize', self.stripesize]
+        args = args + ['MAX', self.__level] + phy_devs
+        logging.info('# Creating raid device with storcli')
+        logging.info('# Command line: {}'.format(subprocess.list2cmdline(args)))
+        result = self._execute('CREATE', args)
+
+        # Wait for update of lsblk
+        sleep(5)
+        # Fetch VDs after creating the new one
+        self.checkVDs()
+        self.checkBlockDevs()
+        virt_devs_after = self.vdevs()
+        block_devs_after = self.getBlockDevs()
+
+        vd = [x for x in virt_devs_after if x not in virt_devs_before]
+        if self.vdev != None:
+            if vd[0] != self.vdev:
+                logging.info('# The VD changed, the new on is: {}'.format(vd[0]))
+        self.vdev = vd[0]
+
+        bd = [x for x in block_devs_after if x not in block_devs_before]
+        if len(bd) != 1 or '/dev/' + bd[0] != self.getDevPath():
+            logging.info('Got BD: {}'.format(bd[0]))
+            logging.error('# Error: The new block device does not match the tested device path!')
+            raise RuntimeError, 'New block dev does not match tested dev error'
+        logging.info('# Created VD {}'.format(self.vdev))
+        logging.info('# Using block device {}'.format(bd[0]))
