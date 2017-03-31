@@ -589,3 +589,18 @@ class Arcconf(RAIDtec):
             if line.strip().startswith('Status'):
                 ready = bool(line.split(':')[1].strip() == 'Optimal')
         return ready
+
+    def secure_erase(self):
+        """Start a secure erase task for each physical drive."""
+        for vdev in self.vdevs:
+            for pdev in self.getPDsFromVD(vdev):
+                self._execute('TASK START', [DEVICE, pdev.replace(':', ' '), 'secureerase noprompt'])
+                logging.info('# Started secure erase for PD {}'.format(pdev))
+        finished = False
+        while not finished:
+            time.sleep(30)
+            tasks = self._execute('GETSTATUS').count('Secureerase')
+            if tasks == 0:
+                finished = True
+            else:
+                logging.info('# Still {} secure erase tasks pending'.format(tasks))
