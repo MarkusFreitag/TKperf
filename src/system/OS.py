@@ -566,3 +566,26 @@ class Arcconf(RAIDtec):
         """Delete the current self.vdev."""
         result = self._execute('DELETE', ['LOGICALDRIVE', name])
         return bool(result.endswith('Command successfully.'))
+
+    def isReady(self):
+        """Check whether the logical drive is ready.
+
+        Returns:
+            bool:
+        """
+        ready = None
+        result = self._execute('GETSTATUS')
+        result = '\n'.join(info_str.split('\n')[1:-3])
+        if result.strip() == 'Current operation              : None'
+            ready = True
+        else:
+            for part in result.split('\n\n'):
+                if part.split('\n')[1:2].split(':')[1].strip == self.vdev:
+                    ready = False
+
+        result = self._execute('GETCONFIG', ['LD', self.vdev])
+        result = '\n'.join(info_str.split('\n')[4:-4])
+        for line in result.split('\n'):
+            if line.strip().startswith('Status'):
+                ready = bool(line.split(':')[1].strip() == 'Optimal')
+        return ready
