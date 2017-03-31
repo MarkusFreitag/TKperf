@@ -561,3 +561,8 @@ class Arcconf(RAIDtec):
             raise RuntimeError, 'New block dev does not match tested dev error'
         logging.info('# Created VD {}'.format(self.vdev))
         logging.info('# Using block device {}'.format(bd[0]))
+
+    def deleteVD(self):
+        """Delete the current self.vdev."""
+        result = self._execute('DELETE', ['LOGICALDRIVE', name])
+        return bool(result.endswith('Command successfully.'))
