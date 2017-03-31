@@ -470,3 +470,21 @@ class Arcconf(RAIDtec):
             raise RuntimeError, 'which arcconf command error'
         else:
             self.setUtil(stdout.rstrip('\n'))
+
+    def checkRaidPath(self):
+        """Check if the virtual drive of the RAID controller is available.
+
+        Returns:
+            bool: True if yes, False if not
+        """
+        if self.vdev != None:
+            logging.info('# Checking for virtual drive {}'.format(self.vdev))
+            result = self._execute('GETCONFIG', ['LD', self.vdev])
+            for line in result.split('\n'):
+                if 'Status' in line:
+                    return bool(line.split(':')[1].strip() == 'Optimal')
+        else:
+            logging.info('# VD not set, checking for PDs: ')
+            logging.info(self.getDevices())
+            result = self._execute('GETCONFIG', ['LD'])
+            return bool('No logical devices configured' in result)
