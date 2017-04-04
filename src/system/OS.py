@@ -447,7 +447,7 @@ class Arcconf(RAIDtec):
     def setVDs(self, v): self.vdevs = v
 
     def _execute(self, cmd, args):
-        proc = subprocess.Popen([self.path, cmd, '0'] + args, shell=True,
+        proc = subprocess.Popen([self.getUtil(), cmd, '0'] + args,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = proc.communicate()
         if isinstance(out, bytes):
@@ -462,11 +462,11 @@ class Arcconf(RAIDtec):
 
     def initialize(self):
         """Look for the arcconf source path."""
-        result = subprocess.Popen(['which', 'arcconf'], shell=True,
+        result = subprocess.Popen(['which', 'arcconf'],
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, _ = result.communicate()
         if result.returncode != 0:
-            logging.error('# Error: command 'which arcconf' returned an error code.')
+            logging.error('# Error: command \'which arcconf\' returned an error code.')
             raise RuntimeError, 'which arcconf command error'
         else:
             self.setUtil(stdout.rstrip('\n'))
@@ -536,7 +536,7 @@ class Arcconf(RAIDtec):
         if self.stripesize:
             args = args + ['stripesize', self.stripesize]
         args = args + ['MAX', self.__level] + phy_devs
-        logging.info('# Creating raid device with storcli')
+        logging.info('# Creating raid device with arcconf')
         logging.info('# Command line: {}'.format(subprocess.list2cmdline(args)))
         result = self._execute('CREATE', args)
 
@@ -576,7 +576,7 @@ class Arcconf(RAIDtec):
         ready = None
         result = self._execute('GETSTATUS')
         result = '\n'.join(info_str.split('\n')[1:-3])
-        if result.strip() == 'Current operation              : None'
+        if result.strip() == 'Current operation              : None':
             ready = True
         else:
             for part in result.split('\n\n'):
