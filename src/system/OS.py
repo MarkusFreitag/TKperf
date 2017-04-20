@@ -447,7 +447,7 @@ class Arcconf(RAIDtec):
     def setVDs(self, v): self.vdevs = v
 
     def _execute(self, cmd, args=[]):
-        proc = subprocess.Popen([self.getUtil(), cmd, '0'] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen([self.getUtil(), cmd, '1'] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, _ = proc.communicate()
         if isinstance(out, bytes):
             out = out.decode().strip()
@@ -507,8 +507,8 @@ class Arcconf(RAIDtec):
         devices = []
         result = self._execute('GETCONFIG', ['LD'])
         for line in result.split('\n'):
-            if line.startswith('Logical Device Number'):
-                devices.append(line.split()[3])
+            if line.startswith('Logical Device number'):
+                devices.append(str(line.split()[3]))
         self.vdevs = devices
         logging.info('# Got the following VDs: {}'.format(', '.join(devices)))
 
@@ -520,7 +520,9 @@ class Arcconf(RAIDtec):
         virt_devs_before = self.vdevs
         block_devs_before = self.getBlockDevs()
 
-        phy_devs = [dev.replace(':', ' ') for dev in self.getDevices()]
+        phy_devs = []
+        for dev in self.getDevices():
+            phy_devs = phy_devs + dev.split(':')
         args = ['LOGICALDRIVE', 'method', 'SKIP']
         if self.readpolicy:
             args = args + ['rcache', self.readpolicy]
@@ -528,7 +530,7 @@ class Arcconf(RAIDtec):
             args = args + ['wcache', self.writepolicy]
         if self.stripesize:
             args = args + ['stripesize', self.stripesize]
-        args = args + ['MAX', self.getLevel()] + phy_devs
+        args = args + ['MAX', self.getLevel()] + phy_devs + ['noprompt']
         logging.info('# Creating raid device with arcconf')
         logging.info('# Command line: {}'.format(subprocess.list2cmdline(args)))
         result = self._execute('CREATE', args)
