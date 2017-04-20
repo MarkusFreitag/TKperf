@@ -446,18 +446,11 @@ class Arcconf(RAIDtec):
     def setVD(self, v): self.vdev = v
     def setVDs(self, v): self.vdevs = v
 
-    def _execute(self, cmd, args):
-        proc = subprocess.Popen([self.getUtil(), cmd, '0'] + args,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = proc.communicate()
+    def _execute(self, cmd, args=[]):
+        proc = subprocess.Popen([self.getUtil(), cmd, '0'] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, _ = proc.communicate()
         if isinstance(out, bytes):
             out = out.decode().strip()
-        if isinstance(err, bytes):
-            err = err.decode().strip()
-        if proc.returncode:
-            ex = RuntimeError(err)
-            ex.exitcode = proc.returncode
-            raise ex
         return out
 
     def initialize(self):
@@ -524,10 +517,10 @@ class Arcconf(RAIDtec):
         # Fetch VDs before creating the new one
         self.checkVDs()
         self.checkBlockDevs()
-        virt_devs_before = self.vdevs()
+        virt_devs_before = self.vdevs
         block_devs_before = self.getBlockDevs()
 
-        phy_devs = [dev.replace(':', ' ') for dev in self.__devices]
+        phy_devs = [dev.replace(':', ' ') for dev in self.getDevices()]
         args = ['LOGICALDRIVE', 'method', 'SKIP']
         if self.readpolicy:
             args = args + ['rcache', self.readpolicy]
@@ -535,7 +528,7 @@ class Arcconf(RAIDtec):
             args = args + ['wcache', self.writepolicy]
         if self.stripesize:
             args = args + ['stripesize', self.stripesize]
-        args = args + ['MAX', self.__level] + phy_devs
+        args = args + ['MAX', self.getLevel()] + phy_devs
         logging.info('# Creating raid device with arcconf')
         logging.info('# Command line: {}'.format(subprocess.list2cmdline(args)))
         result = self._execute('CREATE', args)
@@ -545,7 +538,7 @@ class Arcconf(RAIDtec):
         # Fetch VDs after creating the new one
         self.checkVDs()
         self.checkBlockDevs()
-        virt_devs_after = self.vdevs()
+        virt_devs_after = self.vdevs
         block_devs_after = self.getBlockDevs()
 
         vd = [x for x in virt_devs_after if x not in virt_devs_before]
